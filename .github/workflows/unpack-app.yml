@@ -1,0 +1,62 @@
+name: Unpack application
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'psite_prep_shared_app.zip'
+      - '.github/workflows/unpack-app.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Unpack application into repository root
+        run: |
+          unzip -o psite_prep_shared_app.zip -d .
+          rm -f psite_prep_shared_app.zip
+
+      - name: Add Railway configuration
+        run: |
+          cat > railway.json <<'EOF'
+          {
+            "$schema": "https://railway.com/railway.schema.json",
+            "build": {
+              "builder": "NIXPACKS"
+            },
+            "deploy": {
+              "startCommand": "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120",
+              "healthcheckPath": "/health",
+              "healthcheckTimeout": 120,
+              "restartPolicyType": "ON_FAILURE",
+              "restartPolicyMaxRetries": 10
+            }
+          }
+          EOF
+
+          cat > Procfile <<'EOF'
+          web: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+          EOF
+
+          cat > .python-version <<'EOF'
+          3.12
+          EOF
+
+      - name: Commit extracted application
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+          else
+            git commit -m "Unpack deployable PSITE Prep application"
+            git push
+          fi
