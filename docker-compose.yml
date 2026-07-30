@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      SECRET_KEY: "replace-with-a-long-random-value"
+      INVITE_CODE: "replace-with-your-program-code"
+      DATABASE_PATH: "/data/psite_prep.db"
+      COOKIE_SECURE: "0"
+    volumes:
+      - psite_data:/data
+volumes:
+  psite_data:
